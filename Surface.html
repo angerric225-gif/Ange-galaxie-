@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="fr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Surface de la Terre</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>html,body,#m{height:100%;margin:0}body{background:#050816;font-family:Verdana,sans-serif}
+#bar{position:absolute;z-index:1000;top:10px;left:10px;right:10px;display:flex;gap:6px}
+#bar a,#bar button,#bar input{font:inherit;font-size:14px;padding:10px 12px;border-radius:10px;border:1px solid #2a3566;background:#0e1530;color:#eef1ff;text-decoration:none}
+#q{flex:1;min-width:0}</style></head><body>
+<div id="bar"><a href="./">← Retour</a><input id="q" placeholder="Chercher un lieu"><button id="go">OK</button></div>
+<div id="m"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const map=L.map("m",{worldCopyJump:true,minZoom:2,zoomControl:false}).setView([20,10],3);
+L.control.zoom({position:"bottomright"}).addTo(map);
+const sat=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,attribution:"Imagery © Esri, Maxar, Earthstar Geographics"}).addTo(map);
+const plan=L.tileLayer("https://tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"});
+L.control.layers({"Satellite":sat,"Plan":plan},null,{position:"bottomleft"}).addTo(map);
+async function find(){const q=document.getElementById("q").value.trim();if(!q)return;try{const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+encodeURIComponent(q)),j=await r.json();if(j[0]){const b=j[0].boundingbox;map.flyToBounds([[+b[0],+b[2]],[+b[1],+b[3]]],{maxZoom:15})}else alert("Lieu introuvable")}catch(e){alert("Recherche impossible")}}
+document.getElementById("go").onclick=find;document.getElementById("q").onkeydown=e=>{if(e.key==="Enter")find()};
+</script></body></html>
