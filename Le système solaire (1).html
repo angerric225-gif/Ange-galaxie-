@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Le système solaire</title>
+<style>
+:root{--bg:#050816;--panel:#0e1530;--text:#eef1ff;--muted:#9aa5d1;--accent:#ffb347;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#050816;--panel:#0e1530;--text:#eef1ff;--muted:#9aa5d1}}
+:root[data-theme="dark"]{--bg:#050816;--panel:#0e1530;--text:#eef1ff;--muted:#9aa5d1}
+html{scroll-padding-top:env(safe-area-inset-top,0px);color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:"Trebuchet MS",Verdana,sans-serif;min-height:100vh;display:flex;flex-direction:column}
+h1{font-size:1.25rem;margin:14px 16px 0;font-weight:700}
+p.sub{margin:2px 16px 0;color:var(--muted);font-size:.85rem}
+#stage{flex:1;min-height:340px;position:relative}
+canvas{width:100%;height:100%;display:block;touch-action:none}
+#info{background:var(--panel);margin:0 12px 12px;border-radius:14px;padding:14px 16px;border-left:6px solid var(--accent);min-height:132px}
+#info h2{margin:0 0 4px;font-size:1.1rem}
+#info p{margin:4px 0;font-size:.9rem;line-height:1.45;max-width:60ch}
+#info .facts{color:var(--muted);font-size:.82rem}
+.controls{display:flex;gap:8px;margin:0 12px 10px}
+button{background:var(--panel);color:var(--text);border:1px solid #2a3566;border-radius:10px;padding:10px 14px;font:inherit;font-size:.85rem;cursor:pointer}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;align-items:flex-end;gap:4px;margin:0 12px 12px}
+.row #info{margin:0;flex:1}
+#guide{flex:none}
+.zoom{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:6px;z-index:4}
+.zoom button{width:44px;height:44px;padding:0;font-size:1.2rem}
+#menuBtn{position:absolute;left:10px;top:10px;z-index:4}
+#mnu{position:absolute;left:10px;top:58px;right:66px;background:var(--panel);border:1px solid #2a3566;border-radius:12px;padding:8px;max-height:calc(100% - 70px);overflow:auto;z-index:5}
+#mnu h3{margin:8px 6px 4px;font-size:.8rem;color:var(--muted)}
+#mnu button{display:block;width:100%;text-align:left;margin:2px 0;border:0;background:transparent}
+#mnu button.on{background:#1b2650}
+#mouth{transform-box:fill-box;transform-origin:center}
+#mouth.talk{animation:talk .25s infinite alternate}
+@keyframes talk{from{transform:scaleY(.6)}to{transform:scaleY(2.6)}}
+#arm{transform-box:fill-box;transform-origin:20% 90%}
+#guide.talking #arm{animation:wave .5s infinite alternate}
+@keyframes wave{from{transform:rotate(-10deg)}to{transform:rotate(25deg)}}
+@media (prefers-reduced-motion: reduce){#mouth.talk,#guide.talking #arm{animation:none}}
+</style>
+</head>
+<body>
+<h1>Le système solaire</h1>
+<p class="sub">Touche une planète pour en savoir plus. Pince l’écran pour zoomer.</p>
+<div id="stage"><canvas id="c" aria-label="Animation du système solaire"></canvas>
+<button id="menuBtn" aria-expanded="false">Destinations</button>
+<div id="mnu" hidden></div>
+<div class="zoom"><button id="zin" aria-label="Zoomer">+</button><button id="zout" aria-label="Dézoomer">−</button><button id="ztgt" aria-label="Zoomer sur la sélection">◎</button><button id="zfit" aria-label="Vue d’ensemble">↺</button></div>
+</div>
+<div class="controls">
+<button id="pause">Pause</button>
+<button id="speed">Vitesse : normale</button>
+<button id="snd" aria-pressed="true">Son : activé</button>
+</div>
+<div class="row">
+<svg id="guide" viewBox="0 0 80 90" width="70" height="79" aria-hidden="true">
+<rect x="18" y="48" width="34" height="32" rx="10" fill="#3b6fd8"/>
+<rect x="22" y="78" width="10" height="10" rx="3" fill="#24408a"/>
+<rect x="38" y="78" width="10" height="10" rx="3" fill="#24408a"/>
+<rect id="arm" x="50" y="46" width="22" height="8" rx="4" fill="#3b6fd8"/>
+<circle cx="35" cy="30" r="20" fill="#f2c9a0"/>
+<path d="M15 27 Q35 0 55 27 Q35 15 15 27Z" fill="#5a3a22"/>
+<circle cx="28" cy="31" r="2.5" fill="#222"/><circle cx="42" cy="31" r="2.5" fill="#222"/>
+<ellipse id="mouth" cx="35" cy="41" rx="5" ry="2" fill="#7a2a2a"/>
+</svg>
+<div id="info"></div>
+</div>
+<script>
+const SOLAR=[
+{n:"Mercure",r:3,d:42,s:4.15,c:"#b5b0a8",t:"La plus proche du Soleil et la plus petite. Elle fait le tour du Soleil en 88 jours.",f:"Température : de −180 °C à 430 °C · 0 lune"},
+{n:"Vénus",r:5.5,d:62,s:1.62,c:"#e8c27a",t:"La planète la plus chaude, à cause de son épaisse atmosphère. Elle tourne à l’envers par rapport à la plupart des planètes.",f:"Température : 465 °C · 0 lune"},
+{n:"Terre",r:5.8,d:84,s:1,c:"#4a90e2",t:"Notre maison, la seule planète connue où la vie existe. Elle est couverte d’eau à 70 %.",f:"Température moyenne : 15 °C · 1 lune"},
+{n:"Mars",r:4.2,d:105,s:.53,c:"#d9573b",t:"La planète rouge, colorée par la rouille de son sol. Elle abrite Olympus Mons, le plus grand volcan connu du système solaire.",f:"Température moyenne : −63 °C · 2 lunes"},
+{n:"Jupiter",r:13,d:142,s:.084,c:"#d8a878",t:"La géante du système solaire : toutes les autres planètes tiendraient à l’intérieur. Sa Grande Tache Rouge est une tempête vieille de siècles.",f:"Température : −110 °C · plus de 90 lunes"},
+{n:"Saturne",r:11,d:182,s:.034,c:"#e6d29a",ring:true,t:"Célèbre pour ses anneaux faits de glace et de roche. Elle est si légère qu’elle flotterait sur l’eau.",f:"Température : −140 °C · plus de 140 lunes"},
+{n:"Uranus",r:8,d:216,s:.012,c:"#8fdde0",t:"Une géante de glace couchée sur le côté : elle roule autour du Soleil comme une bille.",f:"Température : −195 °C · 28 lunes"},
+{n:"Neptune",r:7.8,d:246,s:.006,c:"#4466e0",t:"La plus lointaine, balayée par des vents de plus de 2 000 km/h. Un tour autour du Soleil dure 165 ans.",f:"Température : −200 °C · 16 lunes"}
+];
+const SUN={n:"Le Soleil",t:"Une étoile qui contient 99,8 % de la masse du système solaire. Sa lumière met environ 8 minutes à atteindre la Terre.",f:"Surface : 5 500 °C · Cœur : 15 millions °C",c:"#ffb347"};
+const cv=document.getElementById("c"),x=cv.getContext("2d");
+let P=SOLAR,sun=SUN,zoom=1,panX=0,panY=0,follow=null,gal=null;
+let W,H,dpr,sel=SUN,paused=false,mult=1,t=0,last=performance.now();
+const speeds=[["lente",.4],["normale",1],["rapide",3]];let si=1;
+const stars=Array.from({length:120},()=>({x:Math.random(),y:Math.random(),r:Math.random()*1.2+.2}));
+function size(){dpr=window.devicePixelRatio||1;const b=cv.parentElement.getBoundingClientRect();W=b.width;H=b.height;cv.width=W*dpr;cv.height=H*dpr;x.setTransform(dpr,0,0,dpr,0,0)}
+addEventListener("resize",size);size();
+function pos(p){const sc=Math.min(W,H)/2/270;const a=t*p.s*.6+p.d;return{x:W/2+Math.cos(a)*p.d*sc,y:H/2+Math.sin(a)*p.d*sc,sc}}
+function info(o){document.getElementById("info").innerHTML=`<h2 style="color:${o.c}">${o.n}</h2><p>${o.t}</p><p class="facts">${o.f}</p>`;document.getElementById("info").style.borderLeftColor=o.c}
+function shade(c,a){const n=parseInt(c.slice(1),16),f=v=>Math.max(0,Math.min(255,Math.round(a<0?v*(1+a):v+(255-v)*a)));return `rgb(${f(n>>16)},${f((n>>8)&255)},${f(n&255)})`}
+function ring(cx,cy,r,a0,a1){x.strokeStyle="rgba(222,200,150,.85)";x.lineWidth=Math.max(2,r*.3);x.beginPath();x.ellipse(cx,cy,r*1.9,r*.6,-.4,a0,a1);x.stroke();x.strokeStyle="rgba(120,100,70,.6)";x.lineWidth=1;x.beginPath();x.ellipse(cx,cy,r*1.55,r*.49,-.4,a0,a1);x.stroke()}
+function drawPlanet(p,cx,cy,r){
+x.save();x.shadowColor=p.c;x.shadowBlur=r*.9;x.fillStyle=p.c;x.beginPath();x.arc(cx,cy,r,0,7);x.fill();x.restore();
+const a=Math.atan2(H/2-cy,W/2-cx),lx=cx+Math.cos(a)*r*.5,ly=cy+Math.sin(a)*r*.5;
+x.save();x.beginPath();x.arc(cx,cy,r,0,7);x.clip();
+const g=x.createRadialGradient(lx,ly,r*.1,cx,cy,r*1.15);g.addColorStop(0,shade(p.c,.5));g.addColorStop(.45,p.c);g.addColorStop(1,shade(p.c,-.85));
+x.fillStyle=g;x.fillRect(cx-r,cy-r,2*r,2*r);
+const N=p.n;
+if(N==="Jupiter"||N==="Saturne"||N==="Uranus"||N==="Neptune"){for(let i=-3;i<=3;i++){x.fillStyle=i%2?"rgba(120,70,40,.3)":"rgba(255,240,210,.2)";x.fillRect(cx-r,cy+i*r*.27-r*.09,2*r,r*.18)}}
+if(N==="Jupiter"){x.fillStyle="rgba(190,70,40,.8)";x.beginPath();x.ellipse(cx+r*.2,cy+r*.3,r*.25,r*.13,0,0,7);x.fill()}
+if(N==="Venus"||N==="Vénus"){for(let i=-2;i<=2;i++){x.fillStyle="rgba(255,245,210,.25)";x.beginPath();x.ellipse(cx,cy+i*r*.35,r,r*.12,.25,0,7);x.fill()}}
+if(N==="Terre"){const B=[[-.3,-.2,.35,.28],[.35,.2,.3,.35],[0,.55,.4,.12],[.9,-.5,.25,.2]];x.fillStyle="rgba(70,150,70,.9)";B.forEach(b=>{const px=cx+(((b[0]+t*.12+1)%2)-1)*r;x.beginPath();x.ellipse(px,cy+b[1]*r,b[2]*r,b[3]*r,0,0,7);x.fill()});x.fillStyle="rgba(255,255,255,.55)";for(let i=0;i<4;i++){const px=cx+(((i*.6+t*.2+1)%2)-1)*r;x.beginPath();x.ellipse(px,cy+(i-1.5)*r*.4,r*.35,r*.08,0,0,7);x.fill()}}
+if(N==="Mars"){x.fillStyle="rgba(90,30,20,.4)";x.beginPath();x.ellipse(cx-r*.2,cy+r*.1,r*.4,r*.2,.3,0,7);x.fill();x.fillStyle="rgba(255,255,255,.85)";x.beginPath();x.ellipse(cx,cy-r*.9,r*.5,r*.25,0,0,7);x.fill()}
+if(N==="Mercure"){x.fillStyle="rgba(60,55,50,.45)";[[-.3,-.2,.18],[.3,.25,.22],[.1,-.5,.12],[-.4,.4,.14]].forEach(c=>{x.beginPath();x.arc(cx+c[0]*r,cy+c[1]*r,c[2]*r,0,7);x.fill()})}
+if(!["Mercure","Vénus","Terre","Mars","Jupiter","Saturne","Uranus","Neptune"].includes(N)){x.fillStyle="rgba(0,0,0,.18)";for(let i=0;i<4;i++){const an=i*1.7+N.length;x.beginPath();x.ellipse(cx+Math.cos(an)*r*.4,cy+Math.sin(an*1.3)*r*.4,r*.3,r*.15,an,0,7);x.fill()}}
+x.restore()}
+function mkGal(type){const a=[];const N=2200;for(let i=0;i<N;i++){let r,an,c;if(type==="ell"){r=Math.pow(Math.random(),1.6);an=Math.random()*6.283;c=Math.random()<.7?"255,225,170":"255,190,140"}else{const b=Math.random()<.22;r=b?Math.random()*.18:Math.pow(Math.random(),.65);an=b?Math.random()*6.283:(i%2)*Math.PI+r*5.2+(Math.random()-.5)*(.5+.3*r);c=b?"255,230,170":(Math.random()<.35?"255,170,200":"170,200,255")}a.push({r,a:an,s:Math.random()*1.6+.6,f:`rgba(${c},${(.35+.55*(1-r)).toFixed(2)})`})}return a}
+function drawGal(){const R=Math.min(W,H)*.45,cx=W/2,cy=H/2,rot=t*.05;
+const tr=(r,a)=>{const X=Math.cos(a)*r*R,Y=Math.sin(a)*r*R*gal.tilt,c=Math.cos(gal.ang),s=Math.sin(gal.ang);return[cx+X*c-Y*s,cy+X*s+Y*c]};
+const g=x.createRadialGradient(cx,cy,0,cx,cy,R*.6);g.addColorStop(0,"rgba(255,235,190,.85)");g.addColorStop(.35,"rgba(255,190,120,.3)");g.addColorStop(1,"rgba(0,0,0,0)");x.fillStyle=g;x.beginPath();x.arc(cx,cy,R*.6,0,7);x.fill();
+gal.pts.forEach(p=>{const q=tr(p.r,p.a+rot);x.fillStyle=p.f;x.fillRect(q[0],q[1],p.s,p.s)});
+if(gal.jet){x.strokeStyle="rgba(130,180,255,.85)";x.lineWidth=2.5;x.beginPath();x.moveTo(cx,cy);x.lineTo(cx+R*.7,cy-R*.4);x.stroke()}
+if(gal.me){const q=tr(.55,.55*5.2+rot);x.fillStyle="#ffd36a";x.beginPath();x.arc(q[0],q[1],4/zoom+1,0,7);x.fill();x.fillStyle="#fff";x.font=(12/zoom)+"px Trebuchet MS, sans-serif";x.textAlign="left";x.fillText("Nous sommes ici",q[0]+8/zoom,q[1]-6/zoom)}}
+function draw(now){
+const dt=Math.min(now-last,50)/1000;last=now;if(!paused)t+=dt*mult;
+x.clearRect(0,0,W,H);
+stars.forEach(s=>{x.fillStyle="rgba(255,255,255,.7)";x.beginPath();x.arc(s.x*W,s.y*H,s.r,0,7);x.fill()});
+const sc=Math.min(W,H)/2/270;
+if(follow&&!gal){const fq=pos(follow);panX=-(fq.x-W/2)*zoom;panY=-(fq.y-H/2)*zoom}
+x.save();x.translate(W/2+panX,H/2+panY);x.scale(zoom,zoom);x.translate(-W/2,-H/2);
+if(gal){drawGal();x.restore();requestAnimationFrame(draw);return}
+const k=sun.k||1,gr=(44*sc+14)*k,g=x.createRadialGradient(W/2,H/2,4,W/2,H/2,gr);g.addColorStop(0,shade(sun.c,.75));g.addColorStop(.4,sun.c);g.addColorStop(1,"rgba(0,0,0,0)");
+x.fillStyle=g;x.beginPath();x.arc(W/2,H/2,gr,0,7);x.fill();
+x.fillStyle=shade(sun.c,.35);x.beginPath();x.arc(W/2,H/2,Math.max(9,22*sc*k),0,7);x.fill();
+P.forEach(p=>{
+x.strokeStyle=sel===p?"rgba(255,255,255,.5)":"rgba(255,255,255,.18)";x.lineWidth=1/zoom;
+x.beginPath();x.arc(W/2,H/2,p.d*sc,0,7);x.stroke();
+const q=pos(p),r=Math.max(7,p.r*sc*1.6);
+if(p.ring)ring(q.x,q.y,r,Math.PI,2*Math.PI);
+drawPlanet(p,q.x,q.y,r);if(p.ring)ring(q.x,q.y,r,0,Math.PI);
+if(sel===p){x.strokeStyle="#fff";x.lineWidth=1.5;x.beginPath();x.arc(q.x,q.y,r+5,0,7);x.stroke();
+}
+x.fillStyle=sel===p?"#fff":"rgba(255,255,255,.75)";x.font=(sel===p?"bold ":"")+(12/zoom)+"px Trebuchet MS, sans-serif";x.textAlign="center";x.fillText(p.n,q.x,q.y+r+5+10/zoom);
+});
+x.restore();requestAnimationFrame(draw)}
+function tap(e){
+const b=cv.getBoundingClientRect(),mx=(e.clientX-b.left-W/2-panX)/zoom+W/2,my=(e.clientY-b.top-H/2-panY)/zoom+H/2;if(gal)return;
+let best=null,bd=1e9;
+P.forEach(p=>{const q=pos(p),d=Math.hypot(q.x-mx,q.y-my);if(d<bd){bd=d;best=p}});
+const sd=Math.hypot(W/2-mx,H/2-my);
+if(sd<30/zoom&&sd<bd)sel=sun;else if(bd<32/zoom)sel=best;
+if(follow)follow=sel===sun?null:sel;info(sel);say(sel.n+". "+sel.t)}
+function setZoom(z){zoom=Math.max(.5,Math.min(10,z))}
+const ptr=new Map();let moved=0,pd=1;
+const pdist=()=>{const v=[...ptr.values()];return Math.hypot(v[0].x-v[1].x,v[0].y-v[1].y)||1};
+cv.addEventListener("pointerdown",e=>{cv.setPointerCapture(e.pointerId);ptr.set(e.pointerId,{x:e.clientX,y:e.clientY});if(ptr.size===1)moved=0;if(ptr.size===2){pd=pdist();moved=99}});
+cv.addEventListener("pointermove",e=>{const o=ptr.get(e.pointerId);if(!o)return;const dx=e.clientX-o.x,dy=e.clientY-o.y;ptr.set(e.pointerId,{x:e.clientX,y:e.clientY});if(ptr.size===1){moved+=Math.abs(dx)+Math.abs(dy);if(moved>8){follow=null;panX+=dx;panY+=dy}}else if(ptr.size===2){const d=pdist();setZoom(zoom*d/pd);pd=d}});
+cv.addEventListener("pointerup",e=>{const was=ptr.size===1&&moved<=8;ptr.delete(e.pointerId);if(was)tap(e)});
+cv.addEventListener("pointercancel",e=>ptr.delete(e.pointerId));
+cv.addEventListener("wheel",e=>{e.preventDefault();setZoom(zoom*(e.deltaY<0?1.12:.89))},{passive:false});
+document.getElementById("zin").onclick=()=>setZoom(zoom*1.4);
+document.getElementById("zout").onclick=()=>setZoom(zoom/1.4);
+document.getElementById("zfit").onclick=()=>{follow=null;zoom=1;panX=panY=0};
+document.getElementById("ztgt").onclick=()=>{if(!gal&&sel!==sun&&P.includes(sel)){follow=sel;setZoom(4)}else{follow=null;panX=panY=0;setZoom(3)}};
+document.getElementById("pause").onclick=e=>{paused=!paused;e.target.textContent=paused?"Reprendre":"Pause"};
+document.getElementById("speed").onclick=e=>{si=(si+1)%3;mult=speeds[si][1];e.target.textContent="Vitesse : "+speeds[si][0]};
+let sound=true,ac;
+function blip(){try{ac=ac||new (window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=660;g.gain.setValueAtTime(.08,ac.currentTime);g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+.15);o.connect(g);g.connect(ac.destination);o.start();o.stop(ac.currentTime+.15)}catch(e){}}
+function talk(v){document.getElementById("mouth").classList.toggle("talk",v);document.getElementById("guide").classList.toggle("talking",v)}
+function say(txt){if(!sound)return;blip();if(!window.speechSynthesis)return;try{speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(txt);u.lang="fr-FR";u.onstart=()=>talk(true);u.onend=u.onerror=()=>talk(false);speechSynthesis.speak(u)}catch(e){}}
+document.getElementById("snd").onclick=e=>{sound=!sound;e.target.textContent=sound?"Son : activé":"Son : coupé";e.target.setAttribute("aria-pressed",sound);if(!sound){try{speechSynthesis.cancel()}catch(x){}talk(false)}else say(sel.n+". "+sel.t)};
+const T=(n,d,r,s,c,t,f)=>({n,d,r,s,c,t,f});
+const TRAP=[
+T("TRAPPIST-1 b",45,6.5,4.2,"#c98a5e","La plus proche de son étoile : une année n’y dure que 1,5 jour. Les mesures du télescope James-Webb indiquent qu’elle n’a sans doute pas d’atmosphère épaisse.","Taille : 1,1 Terre · Année : 1,5 jour"),
+T("TRAPPIST-1 c",65,6.4,2.6,"#b9774f","Un monde rocheux brûlant, de la taille de Vénus. Lui non plus ne semble pas avoir d’atmosphère épaisse.","Taille : 1,1 Terre · Année : 2,4 jours"),
+T("TRAPPIST-1 d",85,4.6,1.6,"#d6c7a6","Plus petite que la Terre, elle est au bord de la zone où l’eau liquide pourrait exister. On ignore encore si elle a une atmosphère.","Taille : 0,8 Terre · Année : 4 jours"),
+T("TRAPPIST-1 e",105,5.3,1.04,"#5f9fc9","L’une des planètes les plus étudiées pour savoir si un monde habitable existe : sa taille et la lumière qu’elle reçoit ressemblent à celles de la Terre.","Taille : 0,9 Terre · Année : 6,1 jours"),
+T("TRAPPIST-1 f",125,6.1,.69,"#7fb08a","Dans la zone habitable de son étoile. Reste à savoir si elle possède une atmosphère.","Taille : 1,05 Terre · Année : 9,2 jours"),
+T("TRAPPIST-1 g",145,6.6,.51,"#6c93b8","La plus grande de la fratrie, un peu plus grosse que la Terre, elle aussi dans la zone habitable.","Taille : 1,13 Terre · Année : 12,4 jours"),
+T("TRAPPIST-1 h",165,4.4,.34,"#98a0c4","La plus lointaine et la plus petite, plus froide que ses sœurs. Un an y dure 19 jours.","Taille : 0,76 Terre · Année : 18,8 jours")];
+const PROX=[
+T("Proxima d",60,3.8,4.2,"#b79574","La plus proche de son étoile et la plus petite, environ le quart de la masse de la Terre. Elle tourne autour de Proxima en 5 jours.","Année : 5,1 jours"),
+T("Proxima b",110,5.8,1.9,"#6fa38a","Une planète rocheuse dans la zone habitable, un peu plus massive que la Terre. Son étoile lance de puissantes éruptions : on ne sait pas si elle a gardé une atmosphère.","Année : 11,2 jours · Masse : au moins 1,07 Terre"),
+T("Proxima c (candidate)",210,8,.04,"#7d8fb5","Une planète candidate, encore à confirmer, environ 7 fois plus lourde que la Terre et très froide. Elle mettrait presque 5 ans à faire le tour de son étoile.","Année : environ 1 900 jours")];
+const DEST=[
+{grp:"Systèmes planétaires",label:"Système solaire",title:"Le système solaire",kind:"system",star:SUN,planets:SOLAR},
+{grp:"Systèmes planétaires",label:"TRAPPIST-1 (7 planètes)",title:"Le système TRAPPIST-1",kind:"system",planets:TRAP,star:{n:"TRAPPIST-1",c:"#ff6a3d",k:.7,t:"Une naine rouge à peine plus grande que Jupiter, à 40 années-lumière de nous. Elle abrite sept planètes de la taille de la Terre, toutes très proches de leur étoile.",f:"Surface : environ 2 300 °C · Distances et couleurs simplifiées"}},
+{grp:"Systèmes planétaires",label:"Proxima du Centaure",title:"Proxima du Centaure",kind:"system",planets:PROX,star:{n:"Proxima du Centaure",c:"#ff5a36",k:.6,t:"L’étoile la plus proche du Soleil, à 4,2 années-lumière. C’est une naine rouge trop faible pour être vue à l’œil nu. Elle accompagne les deux étoiles d’Alpha du Centaure.",f:"Surface : environ 2 800 °C · Distances et couleurs simplifiées"}},
+{grp:"Galaxies",label:"La Voie lactée",title:"La Voie lactée",kind:"galaxy",type:"spiral",tilt:.55,ang:-.3,me:true,n:"La Voie lactée",c:"#cfd8ff",t:"Notre galaxie : une spirale qui contient plus de 100 milliards d’étoiles. Le Soleil se trouve dans l’un de ses bras, loin du centre, et en fait le tour en environ 230 millions d’années.",f:"Diamètre : environ 100 000 années-lumière"},
+{grp:"Galaxies",label:"Andromède",title:"La galaxie d’Andromède",kind:"galaxy",type:"spiral",tilt:.35,ang:-.6,n:"Andromède",c:"#b9c8ff",t:"La grande galaxie voisine, visible à l’œil nu depuis un ciel très sombre. Elle se rapproche de nous et devrait fusionner avec la Voie lactée dans environ 4,5 milliards d’années.",f:"Distance : 2,5 millions d’années-lumière · Environ 1 000 milliards d’étoiles"},
+{grp:"Galaxies",label:"Messier 87",title:"La galaxie Messier 87",kind:"galaxy",type:"ell",tilt:.85,ang:.3,jet:true,n:"Messier 87",c:"#ffd9a0",t:"Une galaxie elliptique géante. Son trou noir central, aussi lourd que 6,5 milliards de Soleils, a été photographié en 2019 et lance un immense jet de matière.",f:"Distance : environ 55 millions d’années-lumière"}];
+const mnu=document.getElementById("mnu"),mb=document.getElementById("menuBtn");
+let lg="";DEST.forEach(d=>{if(d.grp!==lg){lg=d.grp;const h=document.createElement("h3");h.textContent=d.grp;mnu.appendChild(h)}const b=document.createElement("button");b.textContent=d.label;b.onclick=()=>go(d);mnu.appendChild(b);d.btn=b});
+mb.onclick=()=>{mnu.hidden=!mnu.hidden;mb.setAttribute("aria-expanded",!mnu.hidden)};
+function go(d){follow=null;zoom=1;panX=panY=0;
+if(d.kind==="galaxy"){gal=d;if(!d.pts)d.pts=mkGal(d.type);P=[];sun=d;sel=d}else{gal=null;P=d.planets;sun=d.star;sel=d.star}
+document.querySelector("h1").textContent=d.title;DEST.forEach(o=>o.btn.classList.toggle("on",o===d));
+mnu.hidden=true;mb.setAttribute("aria-expanded","false");info(sel);say(sel.n+". "+sel.t)}
+DEST[0].btn.classList.add("on");
+info(sun);requestAnimationFrame(draw);
+</script>
+</body>
+</html>
